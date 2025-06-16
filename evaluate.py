@@ -86,16 +86,16 @@ def run_evaluation(args):
     df_test["predicted_scene_label"] = pred_scene_labels
     df_test["correct"] = (df_test["scene_label"] == df_test["predicted_scene_label"]).astype(int)
     
-    # 전체 정확도
+    # Average Accuracy
     acc = df_test["correct"].mean()
     print(f"\n✅ Test Accuracy: {acc * 100:.2f}%")
 
-    # 클래스별 정확도
+    # Class-wise Accuracy
     print("\nClass-wise accuracy:")
     for scene, a in df_test.groupby("scene_label")["correct"].mean().items():
         print(f"  {scene:20s}: {a * 100:.2f}%")
 
-    # 디바이스별 정확도
+    # Device-wise Accuracy
     print("\nDevice-wise accuracy:")
     for device, a in df_test.groupby("source_label")["correct"].mean().items():
         print(f"  {device:10s}: {a * 100:.2f}%")
