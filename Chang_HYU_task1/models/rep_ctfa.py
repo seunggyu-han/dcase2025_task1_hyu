@@ -22,7 +22,7 @@ def initialize_weights(m):
 
 
 class GRN(nn.Module):
-    """Global Response Normalization (from ConvNeXt V2)"""
+    """Global Response Normalization"""
 
     def __init__(self):
         super().__init__()
@@ -38,8 +38,6 @@ class GRN(nn.Module):
 class CTFAttention(nn.Module):
     """
     Channel-Time-Frequency Attention
-    입력 : (B, C, F, T)  ← DCASE·ESC 전형적인 Mel-Spec 순서
-    출력 : 동일 크기의 가중치로 스케일
     """
     def __init__(self, channels, gamma=2, b=1,
                  k_size_t=3, k_size_f=3, k_size_c=None):
@@ -62,34 +60,34 @@ class CTFAttention(nn.Module):
 
         self.sigmoid = nn.Sigmoid()
 
-    def forward(self, x):                 # x : (B, C, F, T)
+    def forward(self, x):
         B, C, F, T = x.shape
 
-        # ----- 채널 스코어 w_c -----
-        w_c = x.mean(dim=(2, 3), keepdim=True)          # (B, C, 1, 1)
-        w_c = w_c.squeeze(-1).transpose(-1, -2)         # (B, 1, C)
-        w_c = self.sigmoid(self.conv_c(w_c))            # (B, 1, C)
-        w_c = w_c.transpose(-1, -2).unsqueeze(-1)       # (B, C, 1, 1)
+        # ----- CA -----
+        w_c = x.mean(dim=(2, 3), keepdim=True)
+        w_c = w_c.squeeze(-1).transpose(-1, -2)
+        w_c = self.sigmoid(self.conv_c(w_c))
+        w_c = w_c.transpose(-1, -2).unsqueeze(-1)
 
-        # ----- 시간 스코어 w_t -----
-        w_t = x.mean(dim=2)                             # (B, C, T)
-        w_t = self.sigmoid(self.conv_t(w_t))            # (B, C, T)
-        w_t = w_t.unsqueeze(2)                          # (B, C, 1, T)  ← ★
+        # ----- TA -----
+        w_t = x.mean(dim=2)
+        w_t = self.sigmoid(self.conv_t(w_t))
+        w_t = w_t.unsqueeze(2)
 
-        # ----- 주파수 스코어 w_f -----
-        w_f = x.mean(dim=3)                             # (B, C, F)
-        w_f = self.sigmoid(self.conv_f(w_f))            # (B, C, F)
-        w_f = w_f.unsqueeze(3)                          # (B, C, F, 1)  ← ★
+        # ----- FA -----
+        w_f = x.mean(dim=3)
+        w_f = self.sigmoid(self.conv_f(w_f))
+        w_f = w_f.unsqueeze(3)
 
-        # (F,1) ⊗ (1,T) ⇒ (F,T)  →  채널 스케일
-        weight = w_c * (w_f * w_t)                      # (B, C, F, T)
+        # (F,1) ⊗ (1,T) ⇒ (F,T)
+        weight = w_c * (w_f * w_t)
 
         out = x * weight
         return out
 
 
 class RepConv(nn.Module):
-    """Depth-wise RepConv with multiple kernel shapes; re-parameterisable"""
+    """Depth-wise RepConv with multiple kernel shapes; re-parameterizable"""
 
     def __init__(self, in_channels, out_channels, stride=1, init_alphas=(1,1,1,1)):
         super().__init__()
@@ -242,7 +240,7 @@ class RepCTFA(nn.Module):
         return x.squeeze(2).squeeze(2)
 
 
-# ---------------- re‑parameterisation helpers ----------------
+# ---------------- re‑parameterization ----------------
 
 def fuse_conv_bn(conv, bn):
     if conv is None:
